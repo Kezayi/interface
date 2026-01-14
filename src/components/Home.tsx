@@ -428,7 +428,7 @@ export function Home({ onCreateMemorial, onViewMemorial, onNavigateToLegalPage }
                   <LayoutGrid size={18} />
                 </button>
               </div>
-              </div>
+            </div>
             </div>
 
             {viewMode === 'grid' && renderGridView()}
