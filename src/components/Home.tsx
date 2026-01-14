@@ -3,7 +3,7 @@ import { Memorial } from '../lib/supabase';
 import { supabaseQuery } from '../lib/supabaseClient';
 import { Footer } from './Footer';
 import { MessageInTheWind } from './MessageInTheWind';
-import { Grid, List, Calendar, LayoutGrid, MapPin, Clock } from 'lucide-react';
+import { Grid, List, Calendar, LayoutGrid, MapPin, Clock, RefreshCw } from 'lucide-react';
 import { memorialCache } from '../lib/memorialCache';
 
 type HomeProps = {
@@ -40,21 +40,15 @@ export function Home({ onCreateMemorial, onViewMemorial, onNavigateToLegalPage }
   const [viewMode, setViewMode] = useState<ViewMode>('masonry');
 
   useEffect(() => {
+    memorialCache.clear();
     loadMemorials();
     loadUpcomingFunerals();
     loadUpcomingEvents();
   }, []);
 
   const loadMemorials = async () => {
-    const cached = memorialCache.get();
-
-    if (cached && cached.length > 0) {
-      setMemorials(cached);
-      setInitialLoading(false);
-      return;
-    }
-
     try {
+      console.log('Loading memorials from database...');
       const { data, error } = await supabaseQuery<Memorial>('memorials', {
         select: 'id,deceased_full_name,deceased_photo_url,date_of_birth,date_of_death,created_at',
         eq: { is_published: true },
@@ -65,11 +59,16 @@ export function Home({ onCreateMemorial, onViewMemorial, onNavigateToLegalPage }
       if (error) {
         console.error('Error loading memorials:', error);
       } else if (data && Array.isArray(data)) {
+        console.log('Loaded memorials:', data.length);
         memorialCache.set(data);
         setMemorials(data);
+      } else {
+        console.log('No memorials found');
+        setMemorials([]);
       }
     } catch (error) {
       console.error('Exception loading memorials:', error);
+      setMemorials([]);
     } finally {
       setInitialLoading(false);
     }
@@ -372,7 +371,18 @@ export function Home({ onCreateMemorial, onViewMemorial, onNavigateToLegalPage }
               <h2 className="text-xl font-medium text-gray-900">
                 Dernières Publications
               </h2>
-              <div className="flex gap-2 bg-white rounded-lg shadow-sm border border-gray-200 p-1">
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    memorialCache.clear();
+                    loadMemorials();
+                  }}
+                  className="p-2 rounded-lg hover:bg-gray-100 transition-colors text-gray-600"
+                  title="Rafraîchir"
+                >
+                  <RefreshCw size={18} />
+                </button>
+                <div className="flex gap-2 bg-white rounded-lg shadow-sm border border-gray-200 p-1">
                 <button
                   onClick={() => setViewMode('grid')}
                   className={`p-2 rounded transition-colors ${
@@ -417,6 +427,7 @@ export function Home({ onCreateMemorial, onViewMemorial, onNavigateToLegalPage }
                 >
                   <LayoutGrid size={18} />
                 </button>
+              </div>
               </div>
             </div>
 
