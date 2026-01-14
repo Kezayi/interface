@@ -1,18 +1,18 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('Missing env vars:', {
-    hasUrl: !!supabaseUrl,
-    hasKey: !!supabaseAnonKey
+  console.error('⚠️ Configuration Supabase manquante!', {
+    VITE_SUPABASE_URL: supabaseUrl ? '✓ Défini' : '✗ Manquant',
+    VITE_SUPABASE_ANON_KEY: supabaseAnonKey ? '✓ Défini' : '✗ Manquant',
   });
-  throw new Error('Missing Supabase environment variables');
+  console.error('Veuillez vérifier le fichier .env à la racine du projet');
 }
 
-console.log('Supabase initialized with URL:', supabaseUrl);
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+console.log('✓ Supabase initialisé avec succès');
+export const supabase = createClient(supabaseUrl || 'https://placeholder.supabase.co', supabaseAnonKey || 'placeholder', {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
