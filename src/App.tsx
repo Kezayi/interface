@@ -2,6 +2,7 @@ import { useState, lazy, Suspense, useEffect } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AdminAuthProvider } from './contexts/AdminAuthContext';
 import { AuthForm } from './components/AuthForm';
+import { ResetPassword } from './components/ResetPassword';
 import { Home } from './components/Home';
 import Header from './components/Header';
 import KinshipSearchResults from './components/KinshipSearchResults';
@@ -14,7 +15,7 @@ const BackOffice = lazy(() => import('./components/backoffice/BackOffice').then(
 const MemorialForm = lazy(() => import('./components/MemorialForm').then(module => ({ default: module.MemorialForm })));
 const MemorialView = lazy(() => import('./components/MemorialView').then(module => ({ default: module.MemorialView })));
 
-type View = 'home' | 'create' | 'view' | 'auth' | 'search' | 'cgu' | 'privacy' | 'backoffice';
+type View = 'home' | 'create' | 'view' | 'auth' | 'search' | 'cgu' | 'privacy' | 'backoffice' | 'reset-password';
 
 function AppContent() {
   const { user, loading } = useAuth();
@@ -23,12 +24,21 @@ function AppContent() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const type = hashParams.get('type');
+
+    if (type === 'recovery') {
+      setCurrentView('reset-password');
+    }
+  }, []);
+
   const handleViewMemorial = (memorialId: string) => {
     setSelectedMemorialId(memorialId);
     setCurrentView('view');
   };
 
-  const publicViews: View[] = ['home', 'view', 'search', 'cgu', 'privacy', 'backoffice'];
+  const publicViews: View[] = ['home', 'view', 'search', 'cgu', 'privacy', 'backoffice', 'reset-password'];
   const isPublicView = publicViews.includes(currentView);
 
   if (error) {
@@ -156,6 +166,16 @@ function AppContent() {
             <Header onNavigate={handleNavigation} onSearch={handleSearch} />
             <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
               <AuthForm onSuccess={() => setCurrentView('home')} />
+            </div>
+            <Footer onNavigate={handleFooterNavigation} />
+          </>
+        );
+      case 'reset-password':
+        return (
+          <>
+            <Header onNavigate={handleNavigation} onSearch={handleSearch} />
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+              <ResetPassword onSuccess={() => setCurrentView('home')} />
             </div>
             <Footer onNavigate={handleFooterNavigation} />
           </>
