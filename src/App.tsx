@@ -21,6 +21,7 @@ function AppContent() {
   const [currentView, setCurrentView] = useState<View>('home');
   const [selectedMemorialId, setSelectedMemorialId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [error, setError] = useState<string | null>(null);
 
   const handleViewMemorial = (memorialId: string) => {
     setSelectedMemorialId(memorialId);
@@ -29,6 +30,26 @@ function AppContent() {
 
   const publicViews: View[] = ['home', 'view', 'search', 'cgu', 'privacy', 'backoffice'];
   const isPublicView = publicViews.includes(currentView);
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="text-center max-w-md">
+          <h1 className="text-4xl font-bold text-gray-900 mb-4">FLOORENCE</h1>
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+            <p className="text-red-700 mb-2">Une erreur est survenue:</p>
+            <p className="text-sm text-red-600">{error}</p>
+          </div>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800"
+          >
+            Recharger la page
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (

@@ -2,7 +2,11 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables');
+  console.error('Missing Supabase environment variables:', {
+    hasUrl: !!supabaseUrl,
+    hasKey: !!supabaseAnonKey,
+  });
+  throw new Error('Configuration Supabase manquante. Veuillez vérifier les variables d\'environnement VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY');
 }
 
 type QueryBuilder = {
