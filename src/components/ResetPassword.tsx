@@ -48,6 +48,7 @@ export function ResetPassword({ onSuccess }: ResetPasswordProps) {
       if (error) {
         setError(error.message);
       } else {
+        window.location.hash = '';
         onSuccess();
       }
     } finally {
