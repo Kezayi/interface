@@ -1,5 +1,807 @@
-For all designs I ask you to make, have them be beautiful, not cookie cutter. Make webpages that are fully featured and worthy for production.
+# FLOORENCE - Plateforme Digitale de Mémoriaux Funéraires
 
-By default, this template supports JSX syntax with Tailwind CSS classes, React hooks, and Lucide React for icons. Do not install other packages for UI themes, icons, etc unless absolutely necessary or I request them.
+## Vision & Mission
 
-Use icons from lucide-react for logos.
+FLOORENCE est une plateforme web progressive institutionnelle et éthique dédiée à la création et à la gestion d'espaces mémoriaux numériques. Elle permet de perpétuer la mémoire des défunts, d'organiser des cérémonies funéraires, de recevoir des contributions financières, et de créer un réseau social unique basé sur les relations entre vivants autour d'un défunt.
+
+**Mission principale** : Offrir un espace digne, sécurisé et institutionnel pour honorer la mémoire des défunts tout en créant un maillage social des vivants qui les ont connus.
+
+## Architecture Technique
+
+### Stack Technologique
+- **Frontend** : React 18 + TypeScript + Vite + Tailwind CSS
+- **Backend** : Supabase (PostgreSQL + Auth + Storage + Edge Functions)
+- **Graphes** : react-force-graph-2d pour visualisations de réseaux
+- **Recherche** : Fuse.js pour recherche floue
+- **PWA** : Service Worker pour mode hors ligne
+
+### Design System
+- Palette neutre professionnelle (noir, gris, blanc) - **JAMAIS de violet/indigo**
+- Typographie claire avec hiérarchie visuelle forte
+- Système d'espacement 8px
+- Design responsive avec breakpoints mobiles
+- Animations subtiles et micro-interactions soignées
+- Interface accessible et sobre, adaptée au contexte funéraire
+
+## Fonctionnalités Principales
+
+### 1. Espaces Mémoriaux (Memorials)
+
+Chaque mémorial contient :
+- **Informations du défunt** :
+  - Nom complet obligatoire
+  - Photo principale obligatoire (optimisée, max 2MB)
+  - Dates de naissance et de décès
+  - Texte d'annonce de décès
+
+- **Programme funéraire** :
+  - Date et heure de la cérémonie
+  - Adresse de la maison du deuil (texte + coordonnées GPS)
+  - Lieu de la cérémonie
+  - Étapes funéraires (veillée, messe, inhumation) stockées en JSONB
+
+- **Options de gestion** :
+  - Héritier numérique (email invisible, accès d'urgence)
+  - Auteur/créateur du mémorial (auth.users)
+  - Statut de publication (is_published boolean)
+  - Activation des contributions financières
+
+- **Calendrier d'événements commémoratifs** :
+  - Anniversaire de naissance
+  - Anniversaire de décès
+  - Messes de souvenir
+  - Événements personnalisés
+
+### 2. Livre d'Or (Guestbook)
+
+Système de messages de condoléances avec :
+- **Messages textuels** :
+  - Nom de l'auteur (requis)
+  - Email de l'auteur (optionnel, pour notifications)
+  - Téléphone (optionnel, pour vérification OTP)
+  - Relation au défunt (relationship)
+  - Message de condoléances
+
+- **Types de relations standardisés** :
+  - Famille : parent, child, spouse, sibling, grandparent, grandchild, uncle_aunt, cousin
+  - Social : friend, colleague, neighbor, acquaintance, other
+
+- **Médias attachés** :
+  - Photos multiples (stockage Supabase Storage: guestbook-media)
+  - Limite 5MB par fichier, formats JPEG/PNG/HEIF
+  - URL stockées en JSONB array
+
+- **Modération** :
+  - Système de signalement pour contenu inapproprié
+  - Status : visible, hidden, flagged
+  - Interface admin pour modération
+
+- **Vérification** :
+  - OTP par SMS pour messages anonymes (anti-spam)
+  - Edge Functions : send-otp, verify-otp
+
+### 3. Gestes Symboliques (Gestures)
+
+Trois types de gestes payants ou gratuits :
+- **RIP** : Geste de respect simple (gratuit ou payant)
+- **Bougie** : Allumer une bougie virtuelle (payant)
+- **Fleur** : Déposer une fleur virtuelle (payant)
+
+Système de prix :
+- Tarifs configurables par les administrateurs (table gesture_prices)
+- Statut de paiement : pending, completed, failed
+- Transactions enregistrées (financial_transactions)
+- Compteurs agrégés sur memorials (rip_count, candle_count, flower_count)
+- Triggers pour maintenir les compteurs à jour
+
+Notifications :
+- Propriétaire du mémorial notifié des nouveaux gestes
+- Types de notifications gérés via table notifications
+
+### 4. Contributions Financières
+
+Système de collecte de fonds pour les familles :
+- **Contributions** :
+  - Montant libre (minimum configurable)
+  - Nom du contributeur (optionnel)
+  - Téléphone pour paiement mobile money
+  - Référence de paiement
+  - Statut : pending, completed, failed
+
+- **Gestion** :
+  - Activation/désactivation par l'auteur
+  - Auto-désactivation après la cérémonie
+  - Total visible seulement par l'auteur
+  - Liste des contributeurs anonymisée pour le public
+
+- **Traçabilité** :
+  - Toutes les transactions enregistrées dans financial_transactions
+  - Types : gesture_payment, memorial_publication, contribution
+
+### 5. Système de Suivi (Following)
+
+- Suivre un mémorial pour recevoir des notifications
+- Types de notifications configurables :
+  - Mises à jour du programme funéraire
+  - Rappel veille de cérémonie
+  - Nouveaux événements commémoratifs
+  - Nouveaux messages au livre d'or
+- Suivis possibles pour utilisateurs authentifiés et anonymes (stockage local)
+
+### 6. Recherche Multi-critères
+
+Recherche globale avec :
+- Recherche par nom de défunt
+- Recherche par auteur de message
+- Recherche par relation
+- Recherche floue avec Fuse.js
+- Filtres avancés (date, localisation)
+- Indexation PostgreSQL (GIN indexes) pour performance
+
+### 7. Notifications Intelligentes
+
+Système complet de notifications :
+- Table `notifications` avec types :
+  - NEW_MESSAGE : nouveau message livre d'or
+  - NEW_GESTURE : nouveau geste symbolique
+  - NEW_CONTRIBUTION : nouvelle contribution
+  - FUNERAL_UPDATE : modification programme
+  - FUNERAL_REMINDER : rappel J-1
+  - NEW_EVENT : nouvel événement
+
+- Fonctions RPC :
+  - get_user_notifications
+  - mark_notification_read
+  - mark_all_notifications_read
+
+- Triggers automatiques pour génération de notifications
+
+## INNOVATION MAJEURE : Maillage des Vivants
+
+### Concept
+
+Le "Maillage des Vivants" (Mesh of Living) est un système d'inférence de parenté révolutionnaire qui analyse les relations déclarées entre auteurs de messages et le défunt pour déduire automatiquement les relations entre les vivants.
+
+### Algorithme d'Inférence (kinshipInference.ts)
+
+Règles logiques de déduction :
+
+1. **Deux enfants du défunt** → Frères/Sœurs (confiance: 95%)
+2. **Conjoint + Enfant du défunt** → Parent/Enfant (confiance: 90%)
+3. **Deux parents du défunt** → Conjoints probables (confiance: 85%)
+4. **Deux frères/sœurs du défunt** → Beaux-frères/Belles-sœurs (confiance: 80%)
+5. **Même nom de famille** → Famille potentielle (confiance: 60%)
+6. **Grands-parents/Petits-enfants** → Famille étendue (confiance: 70%)
+
+### Structure de Données
+
+```typescript
+interface DeducedRelationship {
+  authorA: Author;
+  authorB: Author;
+  deducedRelation: string;
+  labelFr: string;
+  explanation: string;
+  confidence: number; // 0-1
+}
+```
+
+### Fonctionnalités du Maillage
+
+- **Graphe visuel 2D** : Force Graph avec animations
+  - Nœuds : défunt (noir) + auteurs (bleu)
+  - Liens directs : ligne pleine vers le défunt
+  - Liens déduits : ligne pointillée jaune entre vivants
+  - Taille des nœuds proportionnelle à l'importance
+
+- **Panneau d'analyse** :
+  - Liste des relations déduites avec explications
+  - Score de confiance visuel (barre de progression)
+  - Détails cliquables pour chaque relation
+
+- **Recherche par nom de famille** :
+  - Groupement automatique des personnes avec même nom
+  - Identification de familles potentielles
+  - Suggestions de connexions
+
+### Composant MeshOfLiving.tsx
+
+Composant React complet avec :
+- Graphe interactif (zoom, pan, clic)
+- Modal de détails de relation
+- Légende et codes couleur
+- Responsive design
+- Performance optimisée (useMemo, useCallback)
+
+### Composant RelationshipGraph.tsx
+
+Version simplifiée pour affichage rapide :
+- Relations directes au défunt uniquement
+- Catégorisation : famille, professionnel, ami, autre
+- Couleurs distinctes par catégorie
+
+## Base de Données Supabase
+
+### Tables Principales
+
+#### memorials
+- id (uuid, PK)
+- author_id (uuid, FK auth.users)
+- heir_email (text)
+- deceased_full_name (text)
+- deceased_photo_url (text)
+- date_of_birth (date)
+- date_of_death (date)
+- announcement_text (text)
+- house_address_text (text)
+- house_gps_lat (numeric)
+- house_gps_lng (numeric)
+- funeral_date (timestamptz)
+- funeral_time (text)
+- funeral_location (text)
+- funeral_steps (jsonb)
+- contributions_enabled (boolean)
+- contributions_disabled_at (timestamptz)
+- is_published (boolean)
+- rip_count (integer)
+- candle_count (integer)
+- flower_count (integer)
+- created_at, updated_at
+
+#### guestbook_messages
+- id (uuid, PK)
+- memorial_id (uuid, FK)
+- user_id (uuid, FK nullable)
+- author_name (text)
+- author_email (text)
+- author_phone (text)
+- relationship (text) - enum strict
+- message_text (text)
+- media_urls (jsonb) - array
+- is_verified (boolean)
+- moderation_status (text)
+- flagged_reason (text)
+- created_at, updated_at
+
+#### gestures
+- id (uuid, PK)
+- memorial_id (uuid, FK)
+- user_id (uuid, FK nullable)
+- gesture_type (text) - 'rip', 'candle', 'flower'
+- is_paid (boolean)
+- payment_amount (numeric)
+- payment_status (text)
+- created_at
+
+#### memorial_events
+- id (uuid, PK)
+- memorial_id (uuid, FK)
+- event_type (text) - 'anniversary_birth', 'anniversary_death', 'remembrance_mass', 'custom'
+- event_date (timestamptz)
+- event_time (text)
+- location (text)
+- description (text)
+- is_recurring (boolean)
+- created_by (uuid, FK)
+- created_at
+
+#### notifications
+- id (uuid, PK)
+- recipient_user_id (uuid, FK)
+- memorial_id (uuid, FK)
+- notification_type (text)
+- title (text)
+- message (text)
+- link_url (text)
+- is_read (boolean)
+- created_at
+
+#### financial_transactions
+- id (uuid, PK)
+- memorial_id (uuid, FK nullable)
+- user_id (uuid, FK nullable)
+- transaction_type (text)
+- amount (numeric)
+- currency (text)
+- payment_method (text)
+- payment_reference (text)
+- status (text)
+- description (text)
+- created_at
+
+#### gesture_prices
+- id (uuid, PK)
+- gesture_type (text, unique)
+- price (numeric)
+- currency (text)
+- is_active (boolean)
+- updated_at
+
+#### relationship_types (référentiel)
+- id (uuid, PK)
+- code (text, unique) - 'parent', 'child', etc.
+- label_fr (text)
+- category (text) - 'family', 'professional', 'friend', 'other'
+- description (text)
+
+### Tables d'Administration
+
+#### admin_users
+- id (uuid, PK, FK auth.users)
+- email (text, unique)
+- full_name (text)
+- role (text) - 'super_admin', 'admin', 'moderator'
+- is_active (boolean)
+- last_login_at (timestamptz)
+- created_at, updated_at
+- created_by (uuid, FK)
+
+#### admin_audit_log
+- id (uuid, PK)
+- admin_id (uuid, FK)
+- action_type (text)
+- entity_type (text)
+- entity_id (text)
+- action_details (jsonb)
+- justification (text)
+- ip_address (text)
+- created_at
+
+#### system_parameters
+- id (uuid, PK)
+- param_key (text, unique)
+- param_value (text)
+- param_type (text)
+- description (text)
+- updated_by (uuid, FK)
+- updated_at
+
+### Storage Buckets
+
+- **memorial-photos** : Photos principales des défunts
+- **guestbook-media** : Photos attachées aux messages
+- Politiques RLS strictes
+- Validation MIME types (image/jpeg, image/png, image/heif)
+- Limites de taille par fichier
+
+### Row Level Security (RLS)
+
+Toutes les tables ont RLS activé avec politiques strictes :
+
+**Principe** : Sécurité par défaut, accès restrictif
+
+- **memorials** :
+  - SELECT : Public si is_published = true
+  - INSERT/UPDATE/DELETE : Auteur uniquement
+
+- **guestbook_messages** :
+  - SELECT : Public si memorial publié et moderation_status != 'hidden'
+  - INSERT : Authenticated ou anonymes vérifiés
+  - UPDATE/DELETE : Auteur ou admin
+
+- **gestures** :
+  - SELECT : Public (compteurs uniquement)
+  - INSERT : Tous (authentifiés ou anonymes)
+  - Montants visibles uniquement par auteur du mémorial
+
+- **notifications** :
+  - SELECT : Destinataire uniquement
+  - UPDATE : Destinataire (mark as read)
+
+- **admin_users** :
+  - SELECT : Admin lui-même (via fonction SECURITY DEFINER)
+  - INSERT/UPDATE : Via fonctions RPC uniquement
+
+### Fonctions PostgreSQL
+
+#### Gestion Admin
+- `create_super_admin(user_id, email, full_name)`
+- `get_current_admin_profile()` : SECURITY DEFINER
+- `get_all_admin_profiles()` : Super admin uniquement
+- `log_admin_action(...)` : Traçabilité
+
+#### Statistiques Dashboard
+- `get_dashboard_stats()` : Métriques globales
+- `get_gesture_stats()` : Stats par type de geste
+- `get_gesture_financial_stats()` : Revenus par geste
+
+#### Notifications
+- `get_user_notifications(user_id, limit)`
+- `mark_notification_read(notification_id)`
+- `mark_all_notifications_read(user_id)`
+
+#### Légitimité Auteur (Anti-spam)
+- `increment_author_legitimacy_counter(memorial_id, email, phone, ip)`
+- `get_author_legitimacy_counter(memorial_id, email, phone, ip)`
+- Compteurs de clics pour détecter spam
+
+### Triggers
+
+- `update_memorial_gesture_counts` : Maintient compteurs en temps réel
+- `notify_memorial_owner_on_message` : Génère notification nouveau message
+- `notify_memorial_owner_on_gesture` : Génère notification nouveau geste
+- `create_transaction_for_gesture` : Crée transaction financière
+
+### Indexes de Performance
+
+Indexes optimisés pour :
+- Recherche texte full-text (GIN)
+- Foreign keys (B-tree)
+- Colonnes de filtrage (is_published, moderation_status)
+- Dates (funeral_date, event_date)
+- Composite indexes pour requêtes fréquentes
+
+## Back-Office Administrateur
+
+### Authentification
+
+Système d'auth séparé avec :
+- Email/mot de passe Supabase Auth
+- Rôles : super_admin, admin, moderator
+- Session tracking (last_login_at)
+- Traçabilité complète (audit_log)
+
+Route : `/backoffice`
+Composant : `<BackOffice />`
+
+### Modules Admin
+
+#### 1. Dashboard Principal
+- Statistiques temps réel :
+  - Nombre total de mémoriaux
+  - Nouveaux cette semaine
+  - Messages livre d'or (total + cette semaine)
+  - Gestes symboliques par type
+  - Revenus par geste
+- Graphiques de tendances
+- Événements à venir
+
+#### 2. Gestion Mémoriaux (MemorialsList)
+- Liste complète paginée
+- Filtres : statut, date, auteur
+- Actions : publier, dépublier, supprimer
+- Statistiques par mémorial
+- Export données
+
+#### 3. Modération (ModerationPanel)
+- Messages signalés
+- Actions : approuver, masquer, supprimer
+- Raisons de signalement
+- Historique de modération
+- Justification obligatoire
+
+#### 4. Gestion Utilisateurs (AdminUsersManagement)
+- Liste des admins
+- Création nouveaux admins
+- Modification rôles
+- Activation/désactivation
+- Réservé aux super_admins
+
+#### 5. Paramètres Système (SystemParameters)
+- Configuration globale :
+  - Prix des gestes symboliques
+  - Montants minimum/maximum
+  - Durée de validité OTP
+  - Limites upload
+  - Messages système
+- Modification avec justification
+
+#### 6. Gestion Financière (FinancialManagement)
+- Toutes les transactions
+- Filtres par type, statut, date
+- Export comptable
+- Statistiques revenus
+- Réconciliation paiements
+
+#### 7. Journal d'Audit (AuditLog)
+- Toutes les actions admin
+- Filtres : admin, type, date
+- Détails JSON
+- Traçabilité IP
+- Export logs
+
+#### 8. Supervision Notifications (NotificationsSupervision)
+- Notifications envoyées
+- Taux de lecture
+- Erreurs d'envoi
+- Re-envoi manuel
+
+#### 9. Gestion Héritiers Numériques (DigitalHeirsManagement)
+- Liste héritiers déclarés
+- Accès d'urgence
+- Procédure de vérification
+- Transfert propriété
+
+#### 10. Gestion Incidents (IncidentsManagement)
+- Signalements utilisateurs
+- Tickets support
+- Résolution et suivi
+- Catégorisation
+
+### Sécurité Back-Office
+
+- Connexion sécurisée séparée (AdminAuthContext)
+- Vérification role sur chaque page
+- Fonctions RPC SECURITY DEFINER
+- Pas de récursion RLS
+- Logs exhaustifs de toutes actions
+- Justification obligatoire pour actions critiques
+
+## Edge Functions Supabase
+
+### send-otp
+Envoi de code OTP par SMS :
+- Génère code 6 chiffres
+- Expiration 10 minutes
+- Stockage temporaire (table phone_verifications)
+- Intégration API SMS (à configurer)
+
+### verify-otp
+Vérification code OTP :
+- Validation code
+- Vérification expiration
+- Marquage utilisé
+- Retour token session
+
+### create-admin-user
+Création compte admin :
+- Création auth.users via API Admin
+- Insertion admin_users
+- Envoi email confirmation
+- Log action
+
+### migrate-memorial-photos
+Migration photos vers nouveau bucket :
+- Lecture ancienne source
+- Optimisation images
+- Upload nouveau bucket
+- Update références BDD
+
+## Optimisations de Performance
+
+### Cache
+- Cache navigateur (memorialCache.ts)
+- Service Worker pour mode hors ligne
+- Cache Supabase query (stale-while-revalidate)
+
+### Images
+- Optimisation automatique (imageOptimizer.ts)
+- Compression JPEG qualité 85%
+- Redimensionnement max 1920px
+- Lazy loading
+- Formats modernes (WebP via Supabase Transform)
+
+### Requêtes BDD
+- Indexes stratégiques
+- Select limité aux colonnes nécessaires
+- Pagination côté serveur
+- Agrégations PostgreSQL
+- Compteurs dénormalisés
+
+### Graphes
+- Throttling des animations
+- Limitation nombre de nœuds affichés
+- Virtualisation si > 100 nœuds
+- Canvas au lieu de SVG
+
+## Workflow Utilisateur
+
+### Création Mémorial
+1. Authentification ou email temporaire
+2. Formulaire multi-étapes :
+   - Infos défunt (nom, dates, photo)
+   - Texte annonce
+   - Programme funéraire
+   - Adresse maison du deuil
+   - Héritier numérique
+3. Paiement publication (système de frais)
+4. Publication immédiate ou programmée
+
+### Ajout Message Livre d'Or
+1. Navigation vers mémorial
+2. Formulaire message :
+   - Nom
+   - Relation au défunt (liste déroulante stricte)
+   - Message texte
+   - Photos optionnelles
+3. Vérification OTP si anonyme
+4. Publication instantanée
+5. Notification propriétaire
+
+### Dépôt Geste Symbolique
+1. Sélection type (RIP/Bougie/Fleur)
+2. Choix gratuit ou payant
+3. Si payant : paiement mobile money
+4. Enregistrement geste
+5. Mise à jour compteurs
+6. Notification propriétaire
+
+### Contribution Financière
+1. Saisie montant
+2. Nom contributeur (optionnel)
+3. Téléphone mobile money
+4. Confirmation paiement
+5. Reçu numérique
+6. Notification famille
+
+## Messages Système
+
+### Tonalité
+- Sobre et respectueuse
+- Institutionnelle
+- Empathique sans être mièvre
+- Claire et directe
+- En français formel
+
+### Exemples
+- Création : "L'espace mémorial a été créé avec dignité"
+- Message : "Vos condoléances ont été transmises à la famille"
+- Geste : "Votre geste symbolique a été enregistré"
+- Erreur : "Une erreur est survenue. Veuillez réessayer"
+
+## Conformité & Éthique
+
+### Données Personnelles
+- Consentement explicite collecte données
+- Héritier numérique = accès limité d'urgence
+- Droit à l'oubli (suppression compte)
+- Export données personnelles
+- Pseudonymisation contributions
+
+### CGU (Conditions Générales d'Utilisation)
+- Respect mémoire des défunts
+- Interdiction contenus offensants
+- Modération proactive
+- Responsabilité utilisateurs
+- Droit de retrait contenu
+
+### Politique Confidentialité
+- Types de données collectées
+- Finalités utilisation
+- Durée conservation
+- Mesures sécurité
+- Droits utilisateurs RGPD
+
+## Évolutions Futures
+
+### Phase 2
+- Intégration calendrier Google/iCal
+- Notifications push natives (FCM)
+- Application mobile native
+- Partage réseaux sociaux
+- QR codes pour stèles
+
+### Phase 3
+- Mémoriaux collectifs (catastrophes)
+- Arbres généalogiques interactifs
+- Chronologies de vie augmentées
+- AR (réalité augmentée) pour cimetières
+- Blockchain pour certificats décès
+
+### Phase 4
+- IA suggestions relations (NLP)
+- Traduction automatique multilingue
+- Reconnaissance faciale photos
+- Synthèse vocale messages
+- Chatbot assistance
+
+## Commandes de Développement
+
+```bash
+# Installation
+npm install
+
+# Dev local
+npm run dev
+
+# Build production
+npm run build
+
+# Typecheck
+npm run typecheck
+
+# Linting
+npm run lint
+
+# Supabase local
+supabase start
+supabase db reset
+supabase functions serve
+```
+
+## Variables d'Environnement
+
+```env
+VITE_SUPABASE_URL=https://xxx.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJxxx
+```
+
+## Structure de Fichiers
+
+```
+src/
+├── components/
+│   ├── Home.tsx
+│   ├── MemorialView.tsx
+│   ├── MemorialForm.tsx
+│   ├── MemorialEdit.tsx
+│   ├── Guestbook.tsx
+│   ├── GuestbookForm.tsx
+│   ├── GuestbookMessages.tsx
+│   ├── MemorialEvents.tsx
+│   ├── EventForm.tsx
+│   ├── RelationshipGraph.tsx
+│   ├── MeshOfLiving.tsx
+│   ├── KinshipSearchResults.tsx
+│   ├── MessageInTheWind.tsx
+│   ├── AuthForm.tsx
+│   ├── PhoneVerification.tsx
+│   ├── GestureButtons.tsx
+│   ├── ShareButton.tsx
+│   ├── FollowButton.tsx
+│   ├── ContributionsSection.tsx
+│   ├── Header.tsx
+│   ├── Footer.tsx
+│   ├── MobileBottomNav.tsx
+│   ├── ErrorBoundary.tsx
+│   ├── CGU.tsx
+│   ├── PrivacyPolicy.tsx
+│   └── backoffice/
+│       ├── BackOffice.tsx
+│       ├── AdminLogin.tsx
+│       ├── AdminDashboard.tsx
+│       ├── MemorialsList.tsx
+│       ├── ModerationPanel.tsx
+│       ├── AdminUsersManagement.tsx
+│       ├── SystemParameters.tsx
+│       ├── FinancialManagement.tsx
+│       ├── GesturesPricingManagement.tsx
+│       ├── AuditLog.tsx
+│       ├── NotificationsSupervision.tsx
+│       ├── DigitalHeirsManagement.tsx
+│       └── IncidentsManagement.tsx
+├── contexts/
+│   ├── AuthContext.tsx
+│   └── AdminAuthContext.tsx
+├── lib/
+│   ├── supabase.ts
+│   ├── supabaseClient.ts
+│   ├── supabaseShim.ts
+│   ├── kinshipInference.ts
+│   ├── relationshipMesh.ts
+│   ├── relationshipTypes.ts
+│   ├── useRelationshipTypes.ts
+│   ├── imageOptimizer.ts
+│   ├── memorialCache.ts
+│   └── backoffice-types.ts
+└── App.tsx
+
+supabase/
+├── migrations/
+│   └── [90+ fichiers de migration]
+└── functions/
+    ├── send-otp/
+    ├── verify-otp/
+    ├── create-admin-user/
+    └── migrate-memorial-photos/
+
+public/
+├── manifest.json
+└── sw.js (Service Worker)
+```
+
+## Principes de Développement
+
+1. **Sécurité d'abord** : RLS sur toutes tables, validation inputs, sanitization
+2. **Performance** : Indexes, cache, lazy loading, optimisation images
+3. **Accessibilité** : Sémantique HTML, ARIA, contraste, navigation clavier
+4. **Responsive** : Mobile-first, breakpoints, touch-friendly
+5. **Maintenabilité** : TypeScript strict, composants réutilisables, documentation
+6. **Éthique** : Respect mémoire, modération proactive, transparence données
+7. **Scalabilité** : Architecture modulaire, séparation concerns, edge functions
+
+## License & Propriété
+
+FLOORENCE est une plateforme propriétaire.
+Tous droits réservés © 2026
+Contact : admin@floorence.com
